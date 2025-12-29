@@ -1,4 +1,4 @@
-````markdown
+
 # Intelligent IoT Honeypot for Threat Analysis 🍯🛡️
 
 A low-interaction honeypot designed to emulate vulnerable IoT devices (Telnet), capture attacker traffic, and analyze threats using Machine Learning. This system goes beyond simple logging by automatically classifying attack intent (e.g., **Malware Download**, **Reconnaissance**, **Destruction**) using a **Naive Bayes classifier**.
@@ -140,4 +140,4 @@ The `ml_engine.py` vectorizes these commands using **Bag of Words** to predict t
 **KIT's College of Engineering, Kolhapur**
 
 ```
-```
+
