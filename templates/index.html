@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Intelligent IoT Honeypot Dashboard</title>
+    <!-- Add Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style> 
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #e0e0e0; margin: 0; padding: 20px; } 
+        .container { max-width: 1200px; margin: auto; } 
+        
+        /* Header & Status */
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 20px; }
+        h1 { margin: 0; color: #00e5ff; text-transform: uppercase; letter-spacing: 2px; font-size: 1.8rem; }
+        .status-badge { background: rgba(0, 255, 136, 0.1); color: #00ff88; padding: 5px 15px; border-radius: 20px; border: 1px solid #00ff88; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
+        .blink { width: 8px; height: 8px; background: #00ff88; border-radius: 50%; animation: pulse 2s infinite; }
+        .btn-print { background: #333; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
+        .btn-print:hover { background: #555; }
+
+        /* Grid Layout */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 1px solid #333; } 
+        .card.ml-card { border: 1px solid #00e5ff; box-shadow: 0 0 15px rgba(0, 229, 255, 0.1); }
+        
+        /* Chart Section */
+        .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .chart-container { position: relative; height: 250px; width: 100%; }
+
+        h2 { color: #00e5ff; border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 0; font-size: 1.2rem; } 
+        ul { list-style: none; padding: 0; margin: 0; } 
+        li { background: #2c2c2c; margin: 8px 0; padding: 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; } 
+        .count { background: #00e5ff; color: #000; padding: 2px 8px; border-radius: 12px; font-weight: bold; font-size: 0.9rem; }
+        
+        /* Interactive List Items */
+        .clickable-row { cursor: pointer; transition: background 0.2s; }
+        .clickable-row:hover { background: #333; border-left: 4px solid #ff0055; }
+        
+        /* Modal (Popup) Styles */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85); backdrop-filter: blur(4px); }
+        .modal-content { background-color: #1e1e1e; margin: 5% auto; padding: 25px; border: 1px solid #00e5ff; width: 90%; max-width: 600px; border-radius: 12px; box-shadow: 0 0 30px rgba(0, 229, 255, 0.2); position: relative; animation: slideIn 0.3s; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: #fff; }
+        #modalTitle { color: #ff0055; margin-top: 0; font-size: 1.8rem; }
+        #modalDesc { font-style: italic; color: #bbb; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 15px; font-size: 1.1rem; }
+        .cmd-list-item { background: #111; font-family: 'Consolas', monospace; color: #00ff00; border: 1px solid #333; }
+        
+        @keyframes slideIn { from {transform: translateY(-50px); opacity: 0;} to {transform: translateY(0); opacity: 1;} }
+        @keyframes pulse { 0% { opacity: 1; box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.7); } 70% { opacity: 0.5; box-shadow: 0 0 0 10px rgba(0, 255, 136, 0); } 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); } }
+
+        /* Responsive Charts */
+        @media (max-width: 768px) { .chart-row { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>IoT Threat Intelligence</h1>
+                <span style="font-size: 0.9rem; color: #888;">Live Monitoring Dashboard</span>
+            </div>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div class="status-badge">
+                    <div class="blink"></div> System Online
+                </div>
+                <button class="btn-print" onclick="window.print()">🖨️ Report</button>
+            </div>
+        </header>
+
+        <!-- New Visual Analytics Section -->
+        <div class="chart-row">
+            <div class="card">
+                <h2>📊 Attack Distribution</h2>
+                <div class="chart-container">
+                    <canvas id="attackTypeChart"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <h2>📡 Threat Sources (Top IPs)</h2>
+                <div class="chart-container">
+                    <canvas id="ipChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- ML Analysis Section (Interactive) -->
+            <div class="card ml-card">
+                <h2>🤖 AI Attack Classification</h2>
+                <p style="font-size: 0.9rem; color: #aaa;">Click a category to see forensic details.</p>
+                <ul id="attackList">
+                    {% if attack_details %}
+                        {% for type, data in attack_details.items() %}
+                        <li class="clickable-row" onclick='showDetails("{{ type }}", {{ data|tojson }})'>
+                            <span>{{ type }}</span> 
+                            <span class="count" style="background: #ff0055; color: white;">{{ data.count }}</span>
+                        </li>
+                        {% endfor %}
+                    {% else %}
+                        <li style="justify-content: center; color: #666;">No data analyzed yet. Run analyzer.py!</li>
+                    {% endif %}
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>🌍 Top Attacking IPs</h2>
+                <ul>
+                    {% for ip, count in top_ips.items() %}
+                    <li><span>{{ ip }}</span> <span class="count">{{ count }}</span></li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>🔑 Top Credentials</h2>
+                <ul>
+                    {% for cred, count in top_credentials.items() %}
+                    <li><span style="font-family: monospace;">{{ cred }}</span> <span class="count">{{ count }}</span></li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>💻 Top Raw Commands</h2>
+                <ul>
+                    {% for cmd, count in top_commands.items() %}
+                    <li><span style="font-family: monospace; color: #aaa;">{{ cmd }}</span> <span class="count">{{ count }}</span></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- The Modal Popup -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle">Attack Type</h2>
+            <p id="modalDesc">Description goes here...</p>
+            <h3 style="font-size: 1rem; color: #00e5ff; margin-bottom: 10px;">Observed Command Patterns:</h3>
+            <ul id="modalCommands"></ul>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Charts Implementation ---
+        
+        // Prepare Data for Attack Types Pie Chart
+        const attackDetails = {{ attack_details|tojson if attack_details else '{}' }};
+        const attackLabels = Object.keys(attackDetails);
+        const attackCounts = Object.values(attackDetails).map(d => d.count);
+        
+        // Prepare Data for IP Bar Chart
+        const topIps = {{ top_ips|tojson if top_ips else '{}' }};
+        const ipLabels = Object.keys(topIps);
+        const ipCounts = Object.values(topIps);
+
+        Chart.defaults.color = '#aaa';
+        Chart.defaults.borderColor = '#333';
+
+        // Render Pie Chart
+        new Chart(document.getElementById('attackTypeChart'), {
+            type: 'doughnut',
+            data: {
+                labels: attackLabels,
+                datasets: [{
+                    data: attackCounts,
+                    backgroundColor: ['#ff0055', '#00e5ff', '#ffcc00', '#00ff88', '#9900ff'],
+                    borderWidth: 0
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        });
+
+        // Render Bar Chart
+        new Chart(document.getElementById('ipChart'), {
+            type: 'bar',
+            data: {
+                labels: ipLabels,
+                datasets: [{
+                    label: 'Attacks',
+                    data: ipCounts,
+                    backgroundColor: '#00e5ff',
+                    borderRadius: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+
+        // --- 2. Modal Logic ---
+        function showDetails(type, data) {
+            document.getElementById('modalTitle').innerText = type;
+            document.getElementById('modalDesc').innerText = data.description;
+            const list = document.getElementById('modalCommands');
+            list.innerHTML = '';
+            
+            if (data.commands) {
+                for (const [cmd, count] of Object.entries(data.commands)) {
+                    const li = document.createElement('li');
+                    li.className = 'cmd-list-item';
+                    li.innerHTML = `<span>${cmd}</span> <span class="count">${count}</span>`;
+                    list.appendChild(li);
+                }
+            } else {
+                 list.innerHTML = '<li style="color:#666">No commands recorded.</li>';
+            }
+            document.getElementById('detailModal').style.display = "block";
+        }
+
+        function closeModal() { document.getElementById('detailModal').style.display = "none"; }
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('detailModal')) { closeModal(); }
+        }
+    </script>
+</body>
+</html>
